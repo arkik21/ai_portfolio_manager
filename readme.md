@@ -209,7 +209,8 @@ ai_portfolio_manager/
 ├── config/
 │   ├── assets.yaml      # Stocks and crypto you follow
 │   ├── narratives.yaml  # Trading strategies/narratives
-│   └── settings.yaml    # API keys and general settings
+│   └── settings.yaml    # General settings
+│   └── secrets.yaml    # API keys
 ├── data/
 │   ├── transcripts/     # Stored YouTube transcripts
 │   ├── prices/          # Historical price data
