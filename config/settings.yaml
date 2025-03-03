@@ -1,0 +1,23 @@
+# General system settings
+system:
+  data_refresh_interval: 3600  # In seconds (1 hour)
+  trade_confirmation: true
+  max_allocation_per_asset: 0.20  # Maximum 20% of portfolio per asset
+
+# YouTube channels to monitor
+youtube:
+  channels:
+    - name: "Coin Bureau"
+      channel_id: "UCqK_GSMbpiV8spgD3ZGloSw"
+      relevance: 9
+    - name: "Benjamin Cowen"
+      channel_id: "UCRvqjQPSeaWn-uEx-w0XOIg"
+      relevance: 8
+
+# API configurations
+apis:
+  kucoin:
+    sandbox_mode: false  # Set to false for real trading
+    
+  deepseek:
+    model: "deepseek-r1-large"
