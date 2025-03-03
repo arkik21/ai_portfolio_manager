@@ -1,0 +1,27 @@
+# Trading narratives and strategies to monitor
+# These will guide the AI in making investment decisions
+
+narratives:
+  - name: ai_adoption
+    description: "Growth of AI technology and its adoption across industries"
+    importance: 9
+    assets_affected: [NVDA, ETH]
+    keywords: [artificial intelligence, machine learning, neural networks, llm, gpt]
+    
+  - name: defi_evolution
+    description: "Development and adoption of decentralized finance"
+    importance: 7
+    assets_affected: [ETH, SOL]
+    keywords: [defi, decentralized finance, yield farming, lending, staking]
+    
+  - name: crypto_regulation
+    description: "Regulatory developments affecting cryptocurrencies"
+    importance: 8
+    assets_affected: [BTC, ETH, SOL]
+    keywords: [sec, regulation, compliance, legal, government, policy]
+    
+  - name: fed_monetary_policy
+    description: "Federal Reserve decisions on interest rates and monetary policy"
+    importance: 8
+    assets_affected: [AAPL, NVDA, BTC]
+    keywords: [federal reserve, interest rates, inflation, jerome powell, fomc]

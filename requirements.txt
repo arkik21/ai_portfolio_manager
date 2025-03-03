@@ -1,0 +1,15 @@
+# Core dependencies
+pyyaml
+requests
+python-dateutil
+
+# YouTube transcript fetching
+youtube-transcript-api
+google-api-python-client
+
+# KuCoin API (when ready to implement)
+# kucoin-python==1.0.11
+
+# DeepSeek and Perplexity API clients can be added when implementing those integrations
+# deepseek-python==X.Y.Z
+# perplexity-python==X.Y.Z

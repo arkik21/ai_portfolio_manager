@@ -1,0 +1,39 @@
+# Assets configuration
+# List of stocks and cryptocurrencies to track
+
+crypto:
+  - symbol: BTC
+    name: Bitcoin
+    exchange: kucoin
+    start_date: 2023-01-01
+    description: "Leading cryptocurrency by market cap"
+    tags: [large_cap, store_of_value]
+    
+  - symbol: ETH
+    name: Ethereum
+    exchange: kucoin
+    start_date: 2023-01-01
+    description: "Smart contract platform with largest ecosystem"
+    tags: [large_cap, smart_contracts, defi]
+    
+  - symbol: SOL
+    name: Solana
+    exchange: kucoin
+    start_date: 2023-01-01
+    description: "High-performance blockchain for dApps"
+    tags: [layer1, fast_transactions]
+
+stocks:
+  - symbol: AAPL
+    name: Apple Inc.
+    exchange: nasdaq
+    start_date: 2023-01-01
+    description: "Consumer electronics and services"
+    tags: [tech, consumer]
+    
+  - symbol: NVDA
+    name: NVIDIA Corporation
+    exchange: nasdaq
+    start_date: 2023-01-01
+    description: "AI and graphics computing"
+    tags: [tech, ai, semiconductors]
