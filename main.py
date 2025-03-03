@@ -5,6 +5,9 @@ This is the main module that integrates all components of the AI portfolio manag
 It handles the execution flow, scheduling, and user interaction.
 """
 
+# Copyright (c) 2025 Alexander Isaev
+# All Rights Reserved. See LICENSE for details.
+
 import os
 import sys
 import time
@@ -345,6 +348,71 @@ class AIPortfolioManager:
             logger.error(f"Error generating summary: {e}")
             print(f"Error generating summary: {e}")
 
+    def buy_asset(self, symbol: str, amount: float, price: float = None, confirm: bool = None):
+        """
+        Place a buy order for a specific asset.
+        
+        Args:
+            symbol: Asset symbol (e.g., BTC)
+            amount: Amount to buy in USD
+            price: Limit price (None for market orders)
+            confirm: Whether to require confirmation (overrides config setting)
+            
+        Returns:
+            Order result dictionary
+        """
+        logger.info(f"Creating buy order for {symbol}, amount: ${amount}")
+        
+        # Validate symbol
+        asset_info = self._get_asset_info(symbol)
+        if not asset_info:
+            logger.error(f"Asset {symbol} not found in configuration")
+            return {
+                "status": "error",
+                "reason": f"Asset {symbol} not found in configuration"
+            }
+        
+        # Create order object
+        order = {
+            "symbol": symbol,
+            "type": "market" if price is None else "limit",
+            "side": "buy",
+            "amount": amount,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Add price for limit orders
+        if price is not None:
+            order["price"] = price
+            logger.info(f"Limit price: ${price}")
+        else:
+            logger.info("Market order")
+        
+        # Submit the order
+        result = self.order_manager.submit_order(order, confirm=confirm)
+        
+        if result.get('status') == 'success':
+            logger.info(f"Buy order placed successfully: {result.get('order_id')}")
+        elif result.get('status') == 'pending_confirmation':
+            logger.info(f"Buy order pending confirmation")
+        else:
+            logger.error(f"Buy order failed: {result.get('reason')}")
+        
+        return result
+
+    #helper method to retrieve asset info
+    def _get_asset_info(self, symbol: str):
+        """Get asset information from the assets config."""
+        assets = self._load_yaml(self.assets_path)
+        
+        for asset_category in ['crypto', 'stocks']:
+            for asset in assets.get(asset_category, []):
+                if asset.get('symbol') == symbol:
+                    asset_info = asset.copy()
+                    asset_info['type'] = asset_category
+                    return asset_info
+        return None
+
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(description='AI Portfolio Manager')
@@ -360,7 +428,10 @@ def main():
     parser.add_argument('--summary', action='store_true', help='Print portfolio summary')
     parser.add_argument('--confirm', action='store_true', help='Require confirmation for orders')
     parser.add_argument('--auto', action='store_true', help='Execute orders without confirmation')
-    
+    parser.add_argument('--buy', action='store_true', help='Place a buy order')
+    parser.add_argument('--amount', type=float, help='Amount to buy in USD')
+    parser.add_argument('--price', type=float, help='Limit price (omit for market orders)')
+
     args = parser.parse_args()
     
     # Create the manager
@@ -384,8 +455,22 @@ def main():
         manager.run_full_cycle(args.symbol, args.execute, confirm)
     elif args.schedule:
         manager.run_scheduler(args.interval)
+    elif args.sell:
+        if not args.symbol:
+            print("Error: Symbol must be specified with --symbol")
+        elif not args.amount:
+            print("Error: Amount must be specified with --amount")
+        else:
+            manager.sell_asset(args.symbol, args.amount, args.price, args.confirm)
+    elif args.buy:
+        if not args.symbol:
+            print("Error: Symbol must be specified with --symbol")
+        elif not args.amount:
+            print("Error: Amount must be specified with --amount")
+        else:
+            manager.buy_asset(args.symbol, args.amount, args.price, args.confirm)
     elif args.summary or not any([args.fetch, args.analyze, args.generate, 
-                                 args.cycle, args.schedule, args.execute]):
+                                args.cycle, args.schedule, args.execute, args.buy, args.sell]):
         # Default action is to print summary
         manager.print_portfolio_summary()
 

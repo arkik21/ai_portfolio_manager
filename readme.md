@@ -109,6 +109,24 @@ python main.py --generate
 
 # Print a summary of your portfolio
 python main.py --summary
+
+# Place a market buy order
+python main.py --buy --symbol BTC --amount 100
+
+# Place a limit buy order
+python main.py --buy --symbol BTC --amount 100 --price 55000
+
+# Place a market buy order with confirmation
+python main.py --buy --symbol BTC --amount 100 --confirm
+
+# Place a market sell order
+python main.py --sell --symbol BTC --amount 100
+
+# Place a limit sell order
+python main.py --sell --symbol BTC --amount 100 --price 65000
+
+# Place a market sell order with confirmation
+python main.py --sell --symbol BTC --amount 100 --confirm
 ```
 
 ### Running a Complete Cycle
@@ -217,4 +235,4 @@ This software is for educational purposes only. Trading cryptocurrencies and sto
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Copyright (c) 2025 Alexander Isaev - see the LICENSE file for details.

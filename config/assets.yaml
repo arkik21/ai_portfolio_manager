@@ -4,8 +4,10 @@
 crypto:
   - symbol: "BTC"
     name: "Bitcoin"
-  - symbol: "ETH"
-    name: "Ethereum"
+  - symbol: "XMR"
+    name: "Monero"
+  - symbol: "KAS"
+    name: "Kaspa"
   # Add more cryptocurrencies as needed
 
 stocks:
