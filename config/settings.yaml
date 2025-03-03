@@ -7,12 +7,9 @@ system:
 # YouTube channels to monitor
 youtube:
   channels:
-    - name: "Coin Bureau"
-      channel_id: "UCqK_GSMbpiV8spgD3ZGloSw"
+    - name: "Camel Finance"
+      channel_id: "UCr_DLep7UQ0B_IFhvTORu8A"
       relevance: 9
-    - name: "Benjamin Cowen"
-      channel_id: "UCRvqjQPSeaWn-uEx-w0XOIg"
-      relevance: 8
 
 # API configurations
 apis:

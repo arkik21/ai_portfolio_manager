@@ -414,6 +414,57 @@ class AIPortfolioManager:
         
         return result
 
+    def check_account_balance(self):
+        """
+        Check and display the current account balance for all exchanges.
+        
+        Returns:
+            Dictionary with balance information or None if the request fails
+        """
+        logger.info("Checking account balance")
+        
+        try:
+            # Create a PriceFetcher instance if we don't have one
+            if not hasattr(self, 'price_fetcher'):
+                from modules.price_fetcher import PriceFetcher
+                price_fetcher = PriceFetcher(
+                    config_path=self.settings_path,
+                    assets_path=self.assets_path,
+                    test_mode=self.test_mode
+                )
+            else:
+                price_fetcher = self.price_fetcher
+            
+            # Get the balance from KuCoin
+            balance_info = price_fetcher.get_account_balance()
+            
+            if not balance_info:
+                logger.error("Failed to retrieve account balance")
+                print("Failed to retrieve account balance. Make sure your API credentials are correct.")
+                return None
+            
+            # Print the balance information in a user-friendly format
+            print("\n" + "="*80)
+            print(" ACCOUNT BALANCE ".center(80, "="))
+            print("="*80 + "\n")
+            
+            for currency, accounts in balance_info.get('balances', {}).items():
+                print(f"{currency}:")
+                for account_type, details in accounts.items():
+                    print(f"  {account_type.capitalize()}: {details['balance']} (Available: {details['available']}, On Hold: {details['holds']})")
+                print()
+            
+            print("="*80 + "\n")
+            
+            return balance_info
+        
+        except Exception as e:
+            logger.error(f"Error checking account balance: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            print(f"Error checking account balance: {e}")
+            return None
+
     def sell_asset(self, symbol: str, amount: float, price: float = None, confirm: bool = None):
         """
         Place a sell order for a specific asset.
@@ -553,6 +604,7 @@ def main():
     parser.add_argument('--test', action='store_true', help='Run in test mode with dummy implementations')
     parser.add_argument('--cancel', type=str, help='Cancel a specific order by ID')
     parser.add_argument('--cancel-all', action='store_true', help='Cancel all orders')
+    parser.add_argument('--balance', action='store_true', help='Check account balance')
     
     args = parser.parse_args()
     
