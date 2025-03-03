@@ -76,6 +76,9 @@ class AIPortfolioManager:
             storage_path=self.transcripts_dir
         )
         
+        print(f"Config path: {self.settings_path}")
+        print(f"Config directory exists: {os.path.exists(os.path.dirname(self.settings_path))}")
+        
         self.price_fetcher = PriceFetcher(
             config_path=self.settings_path,
             assets_path=self.assets_path,

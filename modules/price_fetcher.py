@@ -29,25 +29,70 @@ class PriceFetcher:
         self.logger = logging.getLogger('price_fetcher')
         self.assets_path = assets_path
         self.storage_path = storage_path
+        self.client = None
         
         try:
-            # Load configuration
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
+            # Get path to secrets file
+            secrets_path = os.path.join(os.path.dirname(config_path), 'secrets.yaml')
+            self.logger.info(f"Looking for secrets file at: {secrets_path}")
+            
+            if not os.path.exists(secrets_path):
+                self.logger.error(f"Secrets file not found: {secrets_path}")
+                return
+            
+            # Load secrets
+            with open(secrets_path, 'r') as f:
+                secrets = yaml.safe_load(f)
+                self.logger.info("Secrets file loaded successfully")
+            
+            if not secrets:
+                self.logger.error("Secrets file is empty")
+                return
             
             # Extract KuCoin credentials
-            kucoin_config = config.get('exchanges', {}).get('kucoin', {})
+            apis = secrets.get('apis')
+            self.logger.info(f"APIs section found: {apis is not None}")
+            
+            if not apis:
+                self.logger.error("No 'apis' section found in secrets file")
+                return
+            
+            kucoin_config = apis.get('kucoin')
+            self.logger.info(f"KuCoin config found: {kucoin_config is not None}")
+            
+            if not kucoin_config:
+                self.logger.error("No KuCoin configuration found in secrets file")
+                return
+            
+            # Log credential presence (without revealing values)
             api_key = kucoin_config.get('api_key')
             api_secret = kucoin_config.get('api_secret')
             api_passphrase = kucoin_config.get('api_passphrase')
-            sandbox = kucoin_config.get('sandbox', True)
             
-            # Initialize the KuCoin client
+            self.logger.info(f"API Key present: {bool(api_key)}")
+            self.logger.info(f"API Secret present: {bool(api_secret)}")
+            self.logger.info(f"API Passphrase present: {bool(api_passphrase)}")
+            
+            if not all([api_key, api_secret, api_passphrase]):
+                self.logger.error("Missing required KuCoin credentials")
+                return
+            
+            # Get sandbox setting
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                self.logger.info("Settings file loaded successfully")
+            
+            sandbox = config.get('apis', {}).get('kucoin', {}).get('sandbox', True)
+            self.logger.info(f"Using sandbox mode: {sandbox}")
+            
+            # Initialize client
             self.client = Client(api_key, api_secret, api_passphrase, sandbox=sandbox)
             self.logger.info("KuCoin client initialized successfully")
             
         except Exception as e:
-            self.logger.error(f"Error initializing KuCoin client: {e}")
+            self.logger.error(f"Error initializing KuCoin client: {str(e)}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
             self.client = None
     
     def get_current_price(self, symbol: str) -> Optional[Dict[str, Any]]:
