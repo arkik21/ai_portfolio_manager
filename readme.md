@@ -8,7 +8,7 @@ This project enables automated portfolio management by:
 - Fetching and analyzing transcripts from YouTube financial content creators
 - Tracking market prices and trends for configured assets
 - Using DeepSeek R1 AI model to generate trading recommendations
-- Creating and (optionally) executing trades on exchanges
+- Creating and executing trades on exchanges with real or test mode capabilities
 
 The system is designed to run on a Raspberry Pi with 8GB RAM and follows an incremental development approach, starting with core features and expanding over time.
 
@@ -109,24 +109,34 @@ python main.py --generate
 
 # Print a summary of your portfolio
 python main.py --summary
+```
 
-# Place a market buy order
+### Trading Operations
+
+```bash
+# Place a market buy order (real mode)
 python main.py --buy --symbol BTC --amount 100
+
+# Place a market buy order in test mode (no real execution)
+python main.py --test --buy --symbol BTC --amount 100
 
 # Place a limit buy order
 python main.py --buy --symbol BTC --amount 100 --price 55000
 
-# Place a market buy order with confirmation
-python main.py --buy --symbol BTC --amount 100 --confirm
-
 # Place a market sell order
 python main.py --sell --symbol BTC --amount 100
 
-# Place a limit sell order
-python main.py --sell --symbol BTC --amount 100 --price 65000
-
 # Place a market sell order with confirmation
 python main.py --sell --symbol BTC --amount 100 --confirm
+
+# Cancel a specific order by ID
+python main.py --cancel ORDER_ID
+
+# Cancel all orders for a specific cryptocurrency
+python main.py --cancel-all --symbol BTC
+
+# Cancel all orders across all assets
+python main.py --cancel-all
 ```
 
 ### Running a Complete Cycle
@@ -134,6 +144,9 @@ python main.py --sell --symbol BTC --amount 100 --confirm
 ```bash
 # Run a full cycle (fetch, analyze, generate orders)
 python main.py --cycle
+
+# Run a full cycle in test mode
+python main.py --test --cycle
 
 # Run a full cycle and execute orders with confirmation
 python main.py --cycle --execute --confirm
@@ -152,6 +165,9 @@ python main.py --schedule
 
 # Run on a schedule with a custom interval (e.g., 4 hours)
 python main.py --schedule --interval 4
+
+# Run on a schedule in test mode
+python main.py --test --schedule
 ```
 
 ### Setting Up as a Service
@@ -215,6 +231,7 @@ ai_portfolio_manager/
 - ✅ Configuration system
 - ✅ Basic KuCoin API integration
 - ✅ Simple DeepSeek R1 analysis
+- ✅ Order execution and cancellation
 
 ### Phase 2: Enhanced Trading
 - Portfolio tracking and balancing

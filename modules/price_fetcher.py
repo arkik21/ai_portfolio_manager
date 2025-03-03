@@ -22,7 +22,7 @@ logging.basicConfig(
 class PriceFetcher:
     """Handler for KuCoin API interactions."""
     
-    def __init__(self, config_path: str, assets_path: str, storage_path: str = None):
+    def __init__(self, config_path: str, assets_path: str, storage_path: str = None, test_mode: bool = False):
         """
         Initialize the KuCoin API client.
         
@@ -30,11 +30,18 @@ class PriceFetcher:
             config_path: Path to configuration file containing API credentials
             assets_path: Path to assets configuration file
             storage_path: Path to store price data (optional)
+            test_mode: Force using dummy implementation regardless of API availability
         """
         self.logger = logging.getLogger('price_fetcher')
         self.assets_path = assets_path
         self.storage_path = storage_path
         self.client = None
+        self.test_mode = test_mode
+        
+        if test_mode:
+            self.logger.info("Test mode enabled - using dummy KuCoin client")
+            self.client = DummyKuCoinClient()
+            return
         
         # Create storage directory if it doesn't exist and it's specified
         if storage_path:

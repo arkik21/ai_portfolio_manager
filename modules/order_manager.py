@@ -318,7 +318,155 @@ class OrderManager:
         self._save_order(result)
         
         return result
-    
+    def cancel_order(self, order_id: str) -> Dict[str, Any]:
+        """
+        Cancel a specific order.
+        
+        Args:
+            order_id: Order ID to cancel
+            
+        Returns:
+            Dictionary with cancellation result
+        """
+        logger.info(f"Cancelling order {order_id}")
+        
+        try:
+            # Find the order in our local storage to get details
+            order_data = self._find_order(order_id)
+            if not order_data:
+                return {
+                    "status": "error",
+                    "reason": f"Order {order_id} not found in local storage"
+                }
+                
+            # Determine exchange and submit cancellation
+            exchange = order_data.get('exchange', '').lower()
+            
+            result = None
+            if exchange == 'kucoin':
+                from kucoin.client import Client
+                
+                # Check if we have an instance with API client
+                if hasattr(self, 'kucoin_client') and self.kucoin_client:
+                    client = self.kucoin_client
+                else:
+                    # Initialize API client directly using configs
+                    api_key = self.config.get('apis', {}).get('kucoin', {}).get('api_key', '')
+                    api_secret = self.config.get('apis', {}).get('kucoin', {}).get('api_secret', '')
+                    api_passphrase = self.config.get('apis', {}).get('kucoin', {}).get('api_passphrase', '')
+                    sandbox = self.config.get('apis', {}).get('kucoin', {}).get('sandbox_mode', True)
+                    
+                    client = Client(api_key, api_secret, api_passphrase, sandbox)
+                
+                # Call KuCoin API to cancel the order
+                cancellation = client.cancel_order(order_id)
+                
+                result = {
+                    "status": "success",
+                    "order_id": order_id,
+                    "cancelled_ids": cancellation.get('cancelledOrderIds', []),
+                    "exchange": exchange,
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "status": "error",
+                    "reason": f"Unsupported exchange: {exchange}"
+                }
+            
+            # Save cancellation result
+            self._save_cancellation(result)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error cancelling order {order_id}: {e}")
+            return {
+                "status": "error",
+                "reason": str(e),
+                "order_id": order_id,
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def cancel_all_orders(self, symbol: str = None) -> Dict[str, Any]:
+        """
+        Cancel all orders, optionally filtered by symbol.
+        
+        Args:
+            symbol: Symbol to cancel orders for (e.g., BTC), or None for all
+            
+        Returns:
+            Dictionary with cancellation result
+        """
+        logger.info(f"Cancelling all orders{' for ' + symbol if symbol else ''}")
+        
+        try:
+            from kucoin.client import Client
+            
+            # Initialize API client directly using configs
+            api_key = self.config.get('apis', {}).get('kucoin', {}).get('api_key', '')
+            api_secret = self.config.get('apis', {}).get('kucoin', {}).get('api_secret', '')
+            api_passphrase = self.config.get('apis', {}).get('kucoin', {}).get('api_passphrase', '')
+            sandbox = self.config.get('apis', {}).get('kucoin', {}).get('sandbox_mode', True)
+            
+            client = Client(api_key, api_secret, api_passphrase, sandbox)
+            
+            # Format the symbol for KuCoin if specified
+            kucoin_symbol = None
+            if symbol:
+                kucoin_symbol = f"{symbol}-USDT"
+                
+            # Call KuCoin API to cancel all orders
+            cancellation = client.cancel_all_orders(symbol=kucoin_symbol)
+            
+            result = {
+                "status": "success",
+                "symbol": symbol,
+                "cancelled_ids": cancellation.get('cancelledOrderIds', []),
+                "exchange": "kucoin",
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Save cancellation result
+            self._save_cancellation(result)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error cancelling all orders: {e}")
+            return {
+                "status": "error",
+                "reason": str(e),
+                "symbol": symbol,
+                "timestamp": datetime.now().isoformat()
+            }
+
+    def _find_order(self, order_id: str) -> Optional[Dict[str, Any]]:
+        """Find an order by ID in local storage."""
+        for filename in os.listdir(self.output_path):
+            if filename.startswith(f"order_{order_id}_") and filename.endswith('.json'):
+                try:
+                    with open(os.path.join(self.output_path, filename), 'r') as file:
+                        return json.load(file)
+                except Exception as e:
+                    logger.error(f"Error loading order {filename}: {e}")
+        return None
+
+    def _save_cancellation(self, cancellation: Dict[str, Any]) -> bool:
+        """Save cancellation data to storage."""
+        try:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+            order_id = cancellation.get('order_id', str(int(time.time())))
+            file_path = os.path.join(self.output_path, f"cancel_{order_id}_{date_str}.json")
+            
+            with open(file_path, 'w') as file:
+                json.dump(cancellation, file, indent=2)
+            
+            logger.info(f"Saved cancellation for order {order_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving cancellation: {e}")
+            return False
     def _save_order(self, order: Dict[str, Any]) -> bool:
         """
         Save order data to storage.
@@ -377,6 +525,7 @@ class OrderManager:
         # Sort by timestamp, newest first
         orders.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         return orders
+
 
 # Example usage
 if __name__ == "__main__":

@@ -4,10 +4,13 @@
 crypto:
   - symbol: "BTC"
     name: "Bitcoin"
+    exchange: "kucoin"
   - symbol: "XMR"
     name: "Monero"
+    exchange: "kucoin"  
   - symbol: "KAS"
     name: "Kaspa"
+    exchange: "kucoin"
   # Add more cryptocurrencies as needed
 
 stocks:

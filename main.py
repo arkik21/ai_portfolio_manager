@@ -372,12 +372,16 @@ class AIPortfolioManager:
                 "reason": f"Asset {symbol} not found in configuration"
             }
         
+        # Get exchange information (default to 'kucoin' for crypto if not specified)
+        exchange = asset_info.get('exchange', 'kucoin' if asset_info.get('type') == 'crypto' else '')
+        
         # Create order object
         order = {
             "symbol": symbol,
             "type": "market" if price is None else "limit",
             "side": "buy",
             "amount": amount,
+            "exchange": exchange,  # Add exchange information
             "timestamp": datetime.now().isoformat()
         }
         
@@ -387,6 +391,9 @@ class AIPortfolioManager:
             logger.info(f"Limit price: ${price}")
         else:
             logger.info("Market order")
+        
+        # Log exchange information
+        logger.info(f"Using exchange: {exchange}")
         
         # Submit the order
         result = self.order_manager.submit_order(order, confirm=confirm)
@@ -400,6 +407,64 @@ class AIPortfolioManager:
         
         return result
 
+    def sell_asset(self, symbol: str, amount: float, price: float = None, confirm: bool = None):
+        """
+        Place a sell order for a specific asset.
+        
+        Args:
+            symbol: Asset symbol (e.g., BTC)
+            amount: Amount to sell in USD
+            price: Limit price (None for market orders)
+            confirm: Whether to require confirmation (overrides config setting)
+            
+        Returns:
+            Order result dictionary
+        """
+        logger.info(f"Creating sell order for {symbol}, amount: ${amount}")
+        
+        # Validate symbol
+        asset_info = self._get_asset_info(symbol)
+        if not asset_info:
+            logger.error(f"Asset {symbol} not found in configuration")
+            return {
+                "status": "error",
+                "reason": f"Asset {symbol} not found in configuration"
+            }
+        
+        # Get exchange information (default to 'kucoin' for crypto if not specified)
+        exchange = asset_info.get('exchange', 'kucoin' if asset_info.get('type') == 'crypto' else '')
+        
+        # Create order object
+        order = {
+            "symbol": symbol,
+            "type": "market" if price is None else "limit",
+            "side": "sell",
+            "amount": amount,
+            "exchange": exchange,  # Add exchange information
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Add price for limit orders
+        if price is not None:
+            order["price"] = price
+            logger.info(f"Limit price: ${price}")
+        else:
+            logger.info("Market order")
+        
+        # Log exchange information
+        logger.info(f"Using exchange: {exchange}")
+        
+        # Submit the order
+        result = self.order_manager.submit_order(order, confirm=confirm)
+        
+        if result.get('status') == 'success':
+            logger.info(f"Sell order placed successfully: {result.get('order_id')}")
+        elif result.get('status') == 'pending_confirmation':
+            logger.info(f"Sell order pending confirmation")
+        else:
+            logger.error(f"Sell order failed: {result.get('reason')}")
+        
+        return result
     #helper method to retrieve asset info
     def _get_asset_info(self, symbol: str):
         """Get asset information from the assets config."""
@@ -429,6 +494,7 @@ def main():
     parser.add_argument('--confirm', action='store_true', help='Require confirmation for orders')
     parser.add_argument('--auto', action='store_true', help='Execute orders without confirmation')
     parser.add_argument('--buy', action='store_true', help='Place a buy order')
+    parser.add_argument('--sell', action='store_true', help='Place a sell order') 
     parser.add_argument('--amount', type=float, help='Amount to buy in USD')
     parser.add_argument('--price', type=float, help='Limit price (omit for market orders)')
 
