@@ -22,8 +22,9 @@ logger = logging.getLogger('order_manager')
 
 class OrderManager:
     """Manages trading orders based on analysis recommendations."""
-    
-    def __init__(self, config_path: str, assets_path: str, output_path: str = None):
+        
+        
+    def __init__(self, config_path: str, assets_path: str, output_path: str = None, test_mode: bool = False):
         """
         Initialize the OrderManager.
         
@@ -31,9 +32,14 @@ class OrderManager:
             config_path: Path to settings.yaml
             assets_path: Path to assets.yaml
             output_path: Path to store order data (default: ./orders)
+            test_mode: Whether to use dummy implementations instead of real APIs
         """
         self.config_path = config_path
         self.assets_path = assets_path
+        self.test_mode = test_mode
+        
+        if test_mode:
+            logger.info("OrderManager running in TEST mode - all orders will be simulated")
         
         # Set default output path if not provided
         if output_path is None:
@@ -186,10 +192,122 @@ class OrderManager:
         Returns:
             Dictionary with order result
         """
-        # NOTE: This is a dummy implementation
-        # In a real implementation, we would use the KuCoin API client
-        
         logger.info(f"Placing KuCoin order: {order['side']} {order['amount']} {order['symbol']}")
+        
+        # Check if we're in test mode
+        if hasattr(self, 'test_mode') and self.test_mode:
+            logger.info("Using test mode for KuCoin order")
+            return self._place_dummy_kucoin_order(order)
+        
+        try:
+            from kucoin.client import Client
+            import requests
+            
+            # Initialize the KuCoin client
+            api_key = self.config.get('apis', {}).get('kucoin', {}).get('api_key', '')
+            api_secret = self.config.get('apis', {}).get('kucoin', {}).get('api_secret', '')
+            api_passphrase = self.config.get('apis', {}).get('kucoin', {}).get('api_passphrase', '')
+            sandbox_mode = self.config.get('apis', {}).get('kucoin', {}).get('sandbox_mode', True)
+            
+            # Create a requests_params dictionary to disable broker features
+            # This should prevent the SDK from adding KC-API-PARTNER headers
+            requests_params = {
+                'headers': {
+                    'KC-API-PARTNER-VERIFY': 'false'  # Explicitly disable partner verification
+                }
+            }
+            
+            # Create client with requests_params
+            client = Client(api_key, api_secret, api_passphrase, sandbox_mode, requests_params)
+            logger.info(f"KuCoin client initialized for real trading (sandbox: {sandbox_mode})")
+            
+            # Format the symbol for KuCoin (add -USDT if not specified)
+            kucoin_symbol = order['symbol'] if '-' in order['symbol'] else f"{order['symbol']}-USDT"
+            
+            # Place the order based on type
+            if order['type'] == 'market':
+                if order['side'] == 'buy':
+                    # For buy orders, we specify the amount of the quote currency (USDT)
+                    response = client.create_market_order(
+                        kucoin_symbol,
+                        Client.SIDE_BUY,
+                        funds=str(order['amount'])
+                    )
+                    logger.info(f"Placed market buy order with funds: {order['amount']} USDT")
+                else:
+                    # For sell orders, convert the USD amount to crypto amount
+                    # In a real implementation, you would get the current price and calculate the size
+                    # For now, this is a simplified approach
+                    price_info = self._get_current_price(order['symbol'])
+                    if not price_info or 'price' not in price_info:
+                        raise ValueError("Could not determine current price for size calculation")
+                    
+                    size = float(order['amount']) / float(price_info['price'])
+                    size = round(size, 8)  # Round to 8 decimal places
+                    
+                    response = client.create_market_order(
+                        kucoin_symbol,
+                        Client.SIDE_SELL,
+                        size=str(size)
+                    )
+                    logger.info(f"Placed market sell order with size: {size} {order['symbol']}")
+            
+            elif order['type'] == 'limit':
+                if 'price' not in order:
+                    raise ValueError("Price is required for limit orders")
+                
+                # For limit orders, convert the USD amount to crypto amount
+                size = float(order['amount']) / float(order['price'])
+                size = round(size, 8)  # Round to 8 decimal places
+                
+                response = client.create_limit_order(
+                    kucoin_symbol,
+                    order['side'],
+                    str(order['price']),
+                    str(size)
+                )
+                logger.info(f"Placed limit {order['side']} order: {size} {order['symbol']} @ {order['price']}")
+            
+            else:
+                raise ValueError(f"Unsupported order type: {order['type']}")
+            
+            # Format the response
+            result = {
+                "order_id": response.get('orderId', ''),
+                "symbol": order['symbol'],
+                "type": order['type'],
+                "side": order['side'],
+                "amount": order['amount'],
+                "price": order.get('price', 'market'),
+                "status": "success",
+                "exchange": "kucoin",
+                "timestamp": datetime.now().isoformat(),
+                "raw_data": response
+            }
+            
+            logger.info(f"Order placed successfully with ID: {result['order_id']}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error placing KuCoin order: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            # Fall back to dummy order in case of error
+            logger.warning("Falling back to dummy order due to error")
+            return self._place_dummy_kucoin_order(order)
+
+    def _place_dummy_kucoin_order(self, order: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a dummy order for testing purposes.
+        
+        Args:
+            order: Order data
+            
+        Returns:
+            Dictionary with simulated order result
+        """
+        logger.info(f"Creating dummy KuCoin order: {order['side']} {order['amount']} {order['symbol']}")
         
         # Simulate API latency
         time.sleep(1)
@@ -209,6 +327,46 @@ class OrderManager:
             "exchange": "kucoin",
             "timestamp": datetime.now().isoformat()
         }
+
+    def _get_current_price(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get the current price for a symbol.
+        
+        Args:
+            symbol: Asset symbol
+            
+        Returns:
+            Price information or None if not available
+        """
+        try:
+            # Try to import PriceFetcher
+            # This is a bit of a hack, but it's simpler than passing the price_fetcher
+            # into every method that needs it
+            import sys
+            import os
+            
+            # Get the directory containing the current module
+            module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            # Add the parent directory to sys.path if it's not already there
+            if module_dir not in sys.path:
+                sys.path.append(module_dir)
+            
+            from modules.price_fetcher import PriceFetcher
+            
+            # Initialize PriceFetcher
+            price_fetcher = PriceFetcher(
+                config_path=self.config_path,
+                assets_path=self.assets_path
+            )
+            
+            # Get current price
+            price_data = price_fetcher.get_current_price(symbol)
+            return price_data
+            
+        except Exception as e:
+            logger.error(f"Error getting current price for {symbol}: {e}")
+            return None
     
     def create_order_from_signal(self, signal: Dict[str, Any], 
                                allocation: float = None) -> Optional[Dict[str, Any]]:

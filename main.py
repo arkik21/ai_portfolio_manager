@@ -37,13 +37,18 @@ logger = logging.getLogger('ai_portfolio_manager')
 class AIPortfolioManager:
     """Main class that coordinates all portfolio management activities."""
     
-    def __init__(self, base_path: str = None):
+    def __init__(self, base_path: str = None, test_mode: bool = False):
         """
         Initialize the AI Portfolio Manager.
         
         Args:
             base_path: Base directory for the project (default: current directory)
+            test_mode: Use dummy implementations instead of real APIs
         """
+        # Set test mode
+        self.test_mode = test_mode
+        logger.info(f"Running in {'TEST' if test_mode else 'REAL'} mode")
+
         # Set base path
         if base_path is None:
             self.base_path = os.path.dirname(os.path.abspath(__file__))
@@ -85,7 +90,8 @@ class AIPortfolioManager:
         self.price_fetcher = PriceFetcher(
             config_path=self.settings_path,
             assets_path=self.assets_path,
-            storage_path=self.prices_dir
+            storage_path=self.prices_dir,
+            test_mode=test_mode
         )
         
         self.analysis_engine = AnalysisEngine(
@@ -100,7 +106,8 @@ class AIPortfolioManager:
         self.order_manager = OrderManager(
             config_path=self.settings_path,
             assets_path=self.assets_path,
-            output_path=self.orders_dir
+            output_path=self.orders_dir,
+            test_mode=test_mode  # Pass the test_mode parameter
         )
     
     def _load_yaml(self, file_path: str) -> Dict[str, Any]:
@@ -465,6 +472,52 @@ class AIPortfolioManager:
             logger.error(f"Sell order failed: {result.get('reason')}")
         
         return result
+
+    def cancel_specific_order(self, order_id: str):
+        """
+        Cancel a specific order by ID.
+        
+        Args:
+            order_id: ID of the order to cancel
+        """
+        logger.info(f"Cancelling order: {order_id}")
+        
+        result = self.order_manager.cancel_order(order_id)
+        
+        if result.get('status') == 'success':
+            logger.info(f"Order {order_id} cancelled successfully")
+            print(f"Order {order_id} cancelled successfully")
+        else:
+            logger.error(f"Failed to cancel order {order_id}: {result.get('reason')}")
+            print(f"Failed to cancel order {order_id}: {result.get('reason')}")
+        
+        return result
+
+    def cancel_all_orders(self, symbol: str = None):
+        """
+        Cancel all orders, optionally filtered by symbol.
+        
+        Args:
+            symbol: Symbol to cancel orders for (e.g., BTC), or None for all
+        """
+        if symbol:
+            logger.info(f"Cancelling all orders for {symbol}")
+            print(f"Cancelling all orders for {symbol}...")
+        else:
+            logger.info("Cancelling all orders")
+            print("Cancelling all orders...")
+        
+        result = self.order_manager.cancel_all_orders(symbol)
+        
+        if result.get('status') == 'success':
+            cancelled_count = len(result.get('cancelled_ids', []))
+            logger.info(f"Cancelled {cancelled_count} orders successfully")
+            print(f"Cancelled {cancelled_count} orders successfully")
+        else:
+            logger.error(f"Failed to cancel orders: {result.get('reason')}")
+            print(f"Failed to cancel orders: {result.get('reason')}")
+        
+        return result
     #helper method to retrieve asset info
     def _get_asset_info(self, symbol: str):
         """Get asset information from the assets config."""
@@ -497,11 +550,14 @@ def main():
     parser.add_argument('--sell', action='store_true', help='Place a sell order') 
     parser.add_argument('--amount', type=float, help='Amount to buy in USD')
     parser.add_argument('--price', type=float, help='Limit price (omit for market orders)')
-
+    parser.add_argument('--test', action='store_true', help='Run in test mode with dummy implementations')
+    parser.add_argument('--cancel', type=str, help='Cancel a specific order by ID')
+    parser.add_argument('--cancel-all', action='store_true', help='Cancel all orders')
+    
     args = parser.parse_args()
     
-    # Create the manager
-    manager = AIPortfolioManager()
+    # Create the manager with test mode
+    manager = AIPortfolioManager(test_mode=args.test)
     
     # Determine confirmation setting
     confirm = None
@@ -511,7 +567,11 @@ def main():
         confirm = False
     
     # Execute requested action
-    if args.fetch:
+    if args.cancel:
+        manager.cancel_specific_order(args.cancel)
+    elif args.cancel_all:
+        manager.cancel_all_orders(args.symbol)  # Will use symbol if specified
+    elif args.fetch:
         manager.fetch_data()
     elif args.analyze:
         manager.run_analysis(args.symbol)
