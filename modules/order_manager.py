@@ -62,10 +62,34 @@ class OrderManager:
         """Load YAML configuration file."""
         try:
             with open(file_path, 'r') as file:
-                return yaml.safe_load(file)
+                config = yaml.safe_load(file) or {}
+                
+            # Also try to load secrets file if it exists
+            secrets_path = os.path.join(os.path.dirname(file_path), "secrets.yaml")
+            if os.path.exists(secrets_path):
+                try:
+                    with open(secrets_path, 'r') as secret_file:
+                        secrets = yaml.safe_load(secret_file) or {}
+                        
+                    # Merge secrets into config (deep merge)
+                    self._merge_dicts(config, secrets)
+                except Exception as e:
+                    logger.error(f"Failed to load secrets from {secrets_path}: {e}")
+                    
+            return config
         except Exception as e:
             logger.error(f"Failed to load {file_path}: {e}")
             return {}
+            
+    def _merge_dicts(self, dict1, dict2):
+        """
+        Recursively merge dict2 into dict1
+        """
+        for key in dict2:
+            if key in dict1 and isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+                self._merge_dicts(dict1[key], dict2[key])
+            else:
+                dict1[key] = dict2[key]
     
     def _get_asset_info(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
