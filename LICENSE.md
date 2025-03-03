@@ -1,10 +1,10 @@
 ## AI Portfolio Manager - Proprietary License
 
-Copyright (c) 2025 [Your Name or Company]
+Copyright (c) 2025 Alexander Isaev
 
 **All Rights Reserved**
 
-This software and associated documentation (the "Software") contains proprietary information of [Your Name or Company]. It is provided under a license agreement containing restrictions on use, copying, disclosure, and is also protected by copyright law. Reverse engineering of the Software is prohibited.
+This software and associated documentation (the "Software") contains proprietary information of Alexander Isaev. It is provided under a license agreement containing restrictions on use, copying, disclosure, and is also protected by copyright law. Reverse engineering of the Software is prohibited.
 
 **RESTRICTED RIGHTS**
 
@@ -18,4 +18,4 @@ This software and associated documentation (the "Software") contains proprietary
 
 5. **NO WARRANTY**: THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
-For licensing information, please contact: [your.email@example.com]
+For licensing information, please contact: it.isaev.alex@gmail.com
