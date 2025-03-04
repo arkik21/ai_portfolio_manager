@@ -1,7 +1,7 @@
 """
 DeepSeek API Test Script
 
-This script tests the DeepSeek API integration for both R1 analysis and V3 function calling.
+This script tests the DeepSeek API integration for both Reasoner analysis and Chat function calling.
 It can be run independently to verify API connectivity and functionality.
 """
 
@@ -21,35 +21,50 @@ def load_api_key():
         print("Using DeepSeek API key from environment variable")
         return api_key
     
-    # Try to load from secrets.yaml
-    try:
-        # Look for secrets.yaml in the same directory as this script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_dir = os.path.join(script_dir, "config")
-        secrets_path = os.path.join(config_dir, "secrets.yaml")
-        
-        if not os.path.exists(secrets_path):
-            print(f"Secrets file not found at: {secrets_path}")
-            # Try one level up
-            config_dir = os.path.join(os.path.dirname(script_dir), "config")
-            secrets_path = os.path.join(config_dir, "secrets.yaml")
-        
-        if os.path.exists(secrets_path):
-            with open(secrets_path, 'r') as file:
-                secrets = yaml.safe_load(file)
-                api_key = secrets.get('apis', {}).get('deepseek', {}).get('api_key', '')
-                if api_key:
-                    print(f"Using DeepSeek API key from secrets.yaml")
-                    return api_key
-    except Exception as e:
-        print(f"Error loading API key from secrets: {e}")
+    # Try various possible locations for the secrets.yaml file
+    possible_paths = []
     
+    # Current working directory
+    possible_paths.append(os.path.join(os.getcwd(), "config", "secrets.yaml"))
+    
+    # Script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_paths.append(os.path.join(script_dir, "config", "secrets.yaml"))
+    
+    # One level up from script directory
+    possible_paths.append(os.path.join(os.path.dirname(script_dir), "config", "secrets.yaml"))
+    
+    # Two levels up from script directory (for nested modules)
+    possible_paths.append(os.path.join(os.path.dirname(os.path.dirname(script_dir)), "config", "secrets.yaml"))
+    
+    # Try each possible path
+    for secrets_path in possible_paths:
+        print(f"Looking for secrets file at: {secrets_path}")
+        if os.path.exists(secrets_path):
+            try:
+                with open(secrets_path, 'r') as file:
+                    secrets = yaml.safe_load(file)
+                    if secrets and 'apis' in secrets and 'deepseek' in secrets['apis']:
+                        api_key = secrets['apis']['deepseek'].get('api_key', '')
+                        if api_key:
+                            print(f"Using DeepSeek API key from secrets.yaml at {secrets_path}")
+                            return api_key
+                        else:
+                            print(f"DeepSeek API key not found in secrets.yaml at {secrets_path}")
+                    else:
+                        print(f"Invalid structure in secrets.yaml at {secrets_path}")
+            except yaml.YAMLError as e:
+                print(f"Error parsing YAML from {secrets_path}: {str(e)}")
+            except Exception as e:
+                print(f"Error reading secrets file: {str(e)}")
+
+            
     print("DeepSeek API key not found. Please provide it with --api-key or set DEEPSEEK_API_KEY environment variable.")
     return None
 
-def test_r1_analysis(api_key, r1_model="deepseek-r1-large"):
-    """Test DeepSeek R1 for structured financial analysis."""
-    print(f"\n==== Testing DeepSeek R1 Analysis ({r1_model}) ====\n")
+def test_reasoner_analysis(api_key, reasoner_model="deepseek-reasoner"):
+    """Test DeepSeek Reasoner for structured financial analysis."""
+    print(f"\n==== Testing DeepSeek Reasoner Analysis ({reasoner_model}) ====\n")
     
     client = OpenAI(
         api_key=api_key,
@@ -66,93 +81,109 @@ Include your assessment of market sentiment, key factors affecting price, and a 
 """
     
     try:
-        print("Sending analysis request to DeepSeek R1...")
+        print("Sending analysis request to DeepSeek Reasoner...")
         response = client.chat.completions.create(
-            model=r1_model,
+            model=reasoner_model,
             messages=[
                 {
                     "role": "system", 
                     "content": """You are a financial analyst specialized in cryptocurrency markets.
-                    Analyze the given asset and output a structured analysis in this exact JSON format:
-                    {
-                        "sentiment": "bullish|neutral|bearish",
-                        "confidence": "high|medium|low",
-                        "key_points": ["point1", "point2", "point3"],
-                        "price_forecast": {
-                            "short_term": "text forecast for 1-2 weeks",
-                            "medium_term": "text forecast for 1-3 months"
-                        },
-                        "recommendation": "buy|sell|hold"
-                    }"""
+                    Analyze the provided data and present a structured analysis with clear section headings:
+                    
+                    SENTIMENT: (Bullish, Neutral, or Bearish)
+                    CONFIDENCE: (High, Medium, Low)
+                    KEY POINTS:
+                    - Point 1
+                    - Point 2
+                    - Point 3
+                    
+                    PRICE FORECAST:
+                    Short-term (1-2 weeks): Your forecast
+                    Medium-term (1-3 months): Your forecast
+                    
+                    RECOMMENDATION: (BUY, SELL, or HOLD)
+                    
+                    RISK FACTORS:
+                    - Risk 1
+                    - Risk 2
+                    
+                    TRADING STRATEGY:
+                    Detailed strategy with entry and exit points.
+                    """
                 },
                 {"role": "user", "content": prompt}
             ],
             temperature=0.3,
-            max_tokens=1000,
-            response_format={"type": "json_object"}
+            max_tokens=1000
+            # DO NOT include response_format parameter for Reasoner
         )
         
         # Print the raw response for inspection
         print("\nRaw API Response:")
         print(response)
         
-        # Extract and parse JSON response
-        analysis_json = response.choices[0].message.content
+        # Extract text response
+        analysis_text = response.choices[0].message.content
         
-        print("\nAnalysis Content:")
-        print(analysis_json)
+        print("\nAnalysis Content (first 500 chars):")
+        print(analysis_text[:500] + "..." if len(analysis_text) > 500 else analysis_text)
         
-        # Try to parse the JSON to validate format
-        try:
-            analysis_data = json.loads(analysis_json)
-            print("\nSuccessfully parsed JSON response!")
-            print("\nFormatted Analysis:")
-            print(json.dumps(analysis_data, indent=2))
-            
-            # Validate required fields
-            required_fields = ["sentiment", "confidence", "key_points", "price_forecast", "recommendation"]
-            missing_fields = [field for field in required_fields if field not in analysis_data]
-            
-            if missing_fields:
-                print(f"\nWarning: Missing required fields: {', '.join(missing_fields)}")
-            else:
-                print("\nAll required fields present!")
+        # Check for key sections to validate structure
+        expected_sections = ["SENTIMENT", "CONFIDENCE", "KEY POINTS", "PRICE FORECAST", 
+                            "RECOMMENDATION", "RISK FACTORS", "TRADING STRATEGY"]
+        
+        found_sections = []
+        for section in expected_sections:
+            if section in analysis_text:
+                found_sections.append(section)
                 
-            return True
-            
-        except json.JSONDecodeError as e:
-            print(f"\nError: Failed to parse JSON from DeepSeek R1: {e}")
-            print("The response was not valid JSON.")
-            return False
+        print(f"\nFound {len(found_sections)}/{len(expected_sections)} expected sections:")
+        print(", ".join(found_sections))
+        
+        if len(found_sections) < len(expected_sections):
+            missing = [s for s in expected_sections if s not in found_sections]
+            print(f"\nMissing sections: {', '.join(missing)}")
+        
+        return len(found_sections) > 0  # Success if at least one section is found
             
     except Exception as e:
-        print(f"\nError querying DeepSeek R1 API: {e}")
+        print(f"\nError querying DeepSeek Reasoner API: {e}")
         return False
 
 def test_v3_function_calling(api_key, v3_model="deepseek-chat"):
-    """Test DeepSeek V3 for function calling based on financial analysis."""
-    print(f"\n==== Testing DeepSeek V3 Function Calling ({v3_model}) ====\n")
+    """Test DeepSeek Chat for function calling based on financial analysis."""
+    print(f"\n==== Testing DeepSeek Chat Function Calling ({v3_model}) ====\n")
     
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com"
     )
     
-    # Sample analysis data that would come from R1
-    sample_analysis = {
-        "sentiment": "bullish",
-        "confidence": "medium",
-        "key_points": [
-            "Bitcoin is seeing increased institutional adoption",
-            "Technical indicators suggest a potential breakout",
-            "Market sentiment is recovering after recent correction"
-        ],
-        "price_forecast": {
-            "short_term": "Likely to test $70,000 resistance level",
-            "medium_term": "Potential for new all-time highs if current support holds"
-        },
-        "recommendation": "buy"
-    }
+    # Sample analysis data that would come from Reasoner
+    sample_analysis = """
+SENTIMENT: Bullish
+CONFIDENCE: Medium
+
+KEY POINTS:
+- Bitcoin is seeing increased institutional adoption
+- Technical indicators suggest a potential breakout
+- Market sentiment is recovering after recent correction
+
+PRICE FORECAST:
+Short-term (1-2 weeks): Likely to test $70,000 resistance level
+Medium-term (1-3 months): Potential for new all-time highs if current support holds
+
+RECOMMENDATION: BUY
+
+RISK FACTORS:
+- Regulatory uncertainty in major markets
+- Potential macroeconomic headwinds
+- Technical resistance could lead to short-term rejection
+
+TRADING STRATEGY:
+Consider accumulating Bitcoin at current levels with a target of $70,000 for short-term
+and $75,000 for medium-term. Set stop-loss at $62,000 to manage downside risk.
+"""
     
     # Define the tools for function calling
     tools = [
@@ -177,9 +208,9 @@ def test_v3_function_calling(api_key, v3_model="deepseek-chat"):
     ]
     
     try:
-        print("Sending function calling request to DeepSeek V3...")
+        print("Sending function calling request to DeepSeek Chat...")
         
-        # Construct message for V3 model
+        # Construct message for Chat model
         messages = [
             {
                 "role": "system",
@@ -199,8 +230,8 @@ def test_v3_function_calling(api_key, v3_model="deepseek-chat"):
                 Asset: BTC
                 Current price: $68,500
                 
-                Analysis data:
-                {json.dumps(sample_analysis, indent=2)}
+                Analysis:
+                {sample_analysis}
                 
                 Based on this analysis, determine whether to buy, sell, or hold BTC, and if buying or selling, 
                 determine an appropriate portfolio allocation percentage. Call the place_market_order function with your decision.
@@ -208,7 +239,7 @@ def test_v3_function_calling(api_key, v3_model="deepseek-chat"):
             }
         ]
         
-        # Call V3 model with function calling
+        # Call Chat model with function calling
         response = client.chat.completions.create(
             model=v3_model,
             messages=messages,
@@ -262,16 +293,16 @@ def test_v3_function_calling(api_key, v3_model="deepseek-chat"):
             return False
             
     except Exception as e:
-        print(f"\nError with DeepSeek V3 function calling: {e}")
+        print(f"\nError with DeepSeek Chat function calling: {e}")
         return False
 
 def main():
     parser = argparse.ArgumentParser(description="Test DeepSeek API Integration")
     parser.add_argument("--api-key", type=str, help="DeepSeek API Key")
-    parser.add_argument("--r1-model", type=str, default="deepseek-r1-large", help="DeepSeek R1 model name")
-    parser.add_argument("--v3-model", type=str, default="deepseek-chat", help="DeepSeek V3 model name")
-    parser.add_argument("--test-r1", action="store_true", help="Test R1 Analysis")
-    parser.add_argument("--test-v3", action="store_true", help="Test V3 Function Calling")
+    parser.add_argument("--reasoner-model", type=str, default="deepseek-reasoner", help="DeepSeek Reasoner model name")
+    parser.add_argument("--chat-model", type=str, default="deepseek-chat", help="DeepSeek Chat model name")
+    parser.add_argument("--test-reasoner", action="store_true", help="Test Reasoner Analysis")
+    parser.add_argument("--test-chat", action="store_true", help="Test Chat Function Calling")
     
     args = parser.parse_args()
     
@@ -282,18 +313,18 @@ def main():
         sys.exit(1)
     
     # If no specific test is selected, run both
-    run_r1 = args.test_r1 or not (args.test_r1 or args.test_v3)
-    run_v3 = args.test_v3 or not (args.test_r1 or args.test_v3)
+    run_reasoner = args.test_reasoner or not (args.test_reasoner or args.test_chat)
+    run_chat = args.test_chat or not (args.test_reasoner or args.test_chat)
     
     success = True
     
-    if run_r1:
-        r1_success = test_r1_analysis(api_key, args.r1_model)
-        success = success and r1_success
+    if run_reasoner:
+        reasoner_success = test_reasoner_analysis(api_key, args.reasoner_model)
+        success = success and reasoner_success
     
-    if run_v3:
-        v3_success = test_v3_function_calling(api_key, args.v3_model)
-        success = success and v3_success
+    if run_chat:
+        chat_success = test_v3_function_calling(api_key, args.chat_model)
+        success = success and chat_success
     
     if success:
         print("\n✅ All tests passed successfully!")

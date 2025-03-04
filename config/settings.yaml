@@ -10,11 +10,41 @@ youtube:
     - name: "Camel Finance"
       channel_id: "UCr_DLep7UQ0B_IFhvTORu8A"
       relevance: 9
+    - name: "Crypto Cobra"
+      channel_id: "UC8XNl6AATTgd25MpIMA4S4A"
+      relevance: 7
 
 # API configurations
 apis:
   kucoin:
     sandbox_mode: false  # Set to false for real trading
     
-  deepseek:
-    model: "deepseek-r1-large"
+# Portfolio configuration
+portfolio:
+  # Initial capital in USD
+  initial_capital: 100.0
+  
+  # Risk parameters
+  risk_tolerance: "moderate"  # low, moderate, high
+  max_drawdown: 0.30  # 30% maximum drawdown allowed
+  
+  # Allocation constraints
+  max_allocation_per_asset: 1  # Maximum 100% in any single asset
+  min_allocation_per_asset: 0.02  # Minimum 2% for any position
+  max_cash_allocation: 1  # Maximum 100% in cash
+  min_cash_allocation: 0  # Minimum 0% in cash
+  
+  # Diversification requirements
+  min_assets: 1  # Minimum number of different assets
+  max_per_category:  # Maximum allocation per category
+    crypto: 1  # Maximum 100% in crypto
+    stocks: 1  # Maximum 100% in stocks
+    
+  # Rebalancing settings
+  rebalance_threshold: 0.05  # Rebalance when allocation is off by 5%
+  rebalance_frequency: "monthly"  # daily, weekly, monthly
+  
+  # Trading parameters
+  enable_auto_trading: false  # Whether to execute trades automatically
+  confirm_trades: true  # Require confirmation before executing trades
+  trading_hours: "24/7"  # 24/7 for crypto, market for stocks
